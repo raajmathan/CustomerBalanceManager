@@ -21,7 +21,7 @@ A comprehensive web-based customer balance management system with Google Sheets 
 
 ## Live Demo
 
-🔗 **[Access the Application](https://raajmathanrajavel.github.io/CustomerBalanceManager/)**
+🔗 **[Access the Application](https://raajmathan.github.io/CustomerBalanceManager/)**
 
 ## Technologies Used
 
@@ -34,7 +34,7 @@ A comprehensive web-based customer balance management system with Google Sheets 
 ## Getting Started
 
 ### Online Usage
-Simply visit the [live application](https://raajmathanrajavel.github.io/CustomerBalanceManager/) and start managing your customers!
+Simply visit the [live application](https://raajmathan.github.io/CustomerBalanceManager/) and start managing your customers!
 
 ### Local Development
 1. Clone the repository
