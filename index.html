@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Balance Manager</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-wallet"></i> Customer Balance Manager</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="addCustomerBtn">
+                    <i class="fas fa-plus"></i> Add Customer
+                </button>
+                <button class="btn btn-secondary" id="uploadToSheetsBtn" style="display: none;">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload to Sheets
+                </button>
+                <button class="btn btn-secondary" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </header>
+
+        <div class="search-section">
+            <div class="search-container">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search customers..." class="search-input">
+            </div>
+            <div class="filter-container">
+                <select id="filterSelect" class="filter-select">
+                    <option value="all">All Customers</option>
+                    <option value="positive">Positive Balance</option>
+                    <option value="negative">Negative Balance</option>
+                    <option value="zero">Zero Balance</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <div class="stat-card">
+                <div class="stat-icon positive">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="totalCustomers">0</h3>
+                    <p>Total Customers</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon positive">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="totalPositive">₹0</h3>
+                    <p>Total Receivable</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon negative">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="totalNegative">₹0</h3>
+                    <p>Total Payable</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="customers-section">
+            <div class="section-header">
+                <h2>Customer List</h2>
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="card">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                    <button class="view-btn" data-view="table">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="customersContainer" class="customers-container card-view">
+                <!-- Customer cards will be dynamically inserted here -->
+            </div>
+
+            <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading customers...</p>
+            </div>
+
+            <div id="noResults" class="no-results" style="display: none;">
+                <i class="fas fa-search"></i>
+                <p>No customers found</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Customer Modal -->
+    <div id="customerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add New Customer</h3>
+                <button class="close-btn" id="closeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="customerForm">
+                <div class="form-group">
+                    <label for="customerName">Customer Name *</label>
+                    <input type="text" id="customerName" name="customerName" required 
+                           minlength="2" maxlength="50" 
+                           pattern="[a-zA-Z\s\-'\.]{2,50}"
+                           title="Name must be 2-50 characters and contain only letters, spaces, hyphens, apostrophes, and periods">
+                </div>
+                <div class="form-group">
+                    <label for="customerPhone">Phone Number</label>
+                    <input type="tel" id="customerPhone" name="customerPhone"
+                           minlength="10" maxlength="15"
+                           pattern="[\d\s\-\+\(\)]{10,15}"
+                           title="Phone number must be 10-15 digits and can include spaces, hyphens, plus signs, and parentheses (optional)">
+                </div>
+                <div class="form-group">
+                    <label for="customerBalance">Initial Balance</label>
+                    <input type="number" id="customerBalance" name="customerBalance" 
+                           step="0.01" value="0" min="-1000000" max="1000000"
+                           title="Balance must be between -₹10,00,000 and ₹10,00,000">
+                </div>
+                <div class="form-group">
+                    <label for="customerNotes">Notes</label>
+                    <textarea id="customerNotes" name="customerNotes" rows="3" maxlength="500"
+                              title="Notes must not exceed 500 characters"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Balance Update Modal -->
+    <div id="balanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="balanceModalTitle">Update Balance</h3>
+                <button class="close-btn" id="closeBalanceModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="balance-info">
+                <p>Customer: <span id="balanceCustomerName"></span></p>
+                <p>Current Balance: <span id="currentBalance"></span></p>
+            </div>
+            <form id="balanceForm">
+                <div class="form-group">
+                    <label for="transactionType">Transaction Type</label>
+                    <select id="transactionType" name="transactionType" required>
+                        <option value="add">Add Money (New Purchase/Service)</option>
+                        <option value="subtract">Subtract Money (Payment Received)</option>
+                        <option value="return">Return Product (Refund to Customer)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="transactionAmount">Amount *</label>
+                    <input type="number" id="transactionAmount" name="transactionAmount" 
+                           step="0.01" min="0.01" max="1000000" required
+                           title="Amount must be between ₹0.01 and ₹10,00,000">
+                </div>
+                <div class="form-group">
+                    <label for="transactionNote">Transaction Note</label>
+                    <input type="text" id="transactionNote" name="transactionNote" 
+                           maxlength="200" placeholder="e.g., Payment for invoice #123"
+                           title="Transaction note must not exceed 200 characters">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBalanceBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Balance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Google Sheets OAuth Setup Modal -->
+    <div id="googleSheetsModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>Google Sheets Integration Setup</h3>
+                <button class="close-btn" onclick="document.getElementById('googleSheetsModal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="padding: 20px;">
+                <div class="oauth-info" style="background: #e6fffa; border: 1px solid #38b2ac; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <h4 style="color: #234e52; margin-bottom: 15px;"><i class="fas fa-key"></i> OAuth 2.0 Setup Required for Write Access</h4>
+                    <p style="color: #234e52; margin-bottom: 15px;">
+                        To enable full write functionality (creating individual customer sheets, updating data), you need to set up OAuth 2.0 authentication.
+                    </p>
+                    <div style="background: #b2f5ea; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                        <h5 style="color: #234e52; margin: 0 0 10px 0;">✅ With OAuth 2.0, you can:</h5>
+                        <ul style="color: #234e52; margin: 0; padding-left: 20px;">
+                            <li>Create individual Google Sheets for each customer automatically</li>
+                            <li>Update the master sheet with customer data</li>
+                            <li>Full bidirectional synchronization</li>
+                            <li>Write transaction history to customer sheets</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div id="oauthSetup" style="display: none;">
+                    <div style="background: #fff3cd; border: 1px solid #fbbf24; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                        <h4 style="color: #92400e; margin-bottom: 15px;">📋 Setup Instructions</h4>
+                        <ol style="color: #92400e; margin-left: 20px; line-height: 1.6;">
+                            <li>Go to <a href="https://console.developers.google.com" target="_blank">Google Cloud Console</a></li>
+                            <li>Create a new project or select existing one</li>
+                            <li>Enable Google Sheets API and Google Drive API</li>
+                            <li>Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client IDs"</li>
+                            <li>Set Application type to "Web application"</li>
+                            <li>Add your domain to "Authorized JavaScript origins" (e.g., http://localhost:8000)</li>
+                            <li>Copy the Client ID and paste it below</li>
+                        </ol>
+                    </div>
+
+                    <form id="googleSheetsForm">
+                        <div class="form-group">
+                            <label for="clientId">OAuth 2.0 Client ID *</label>
+                            <input type="text" id="clientId" required placeholder="Your Google OAuth Client ID">
+                            <small style="color: #718096;">Get this from Google Cloud Console → Credentials</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="apiKey">Google Sheets API Key *</label>
+                            <input type="text" id="apiKey" required placeholder="Your Google Sheets API Key" value="AIzaSyBUNDxeULUWer3oa1iSPi_ieEyHBbHLHwg">
+                            <small style="color: #718096;">Your API key (pre-filled)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="spreadsheetId">Master Google Sheet ID *</label>
+                            <input type="text" id="spreadsheetId" required placeholder="Paste the Sheet ID from the URL here" value="1uUnQJBjHnDdMBKM7hnoyN9ivWXLa5WjL6_4-whP0feg">
+                            <small style="color: #718096;">Found in the Google Sheets URL between /d/ and /edit (pre-filled)</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('googleSheetsModal').style.display='none'">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="setupGoogleSheets()">Setup OAuth & Enable Write Access</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="signInSection" style="display: none; text-align: center; padding: 20px;">
+                    <h4 style="color: #2d3748; margin-bottom: 15px;">Sign in to Google</h4>
+                    <p style="color: #718096; margin-bottom: 20px;">Click the button below to sign in with your Google account and authorize the application.</p>
+                    <button id="signInBtn" class="btn btn-primary" style="padding: 12px 24px;">
+                        <i class="fab fa-google"></i> Sign in with Google
+                    </button>
+                </div>
+
+                <div id="signedInSection" style="display: none; text-align: center; padding: 20px;">
+                    <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 20px;">
+                        <h4 style="color: #155724; margin-bottom: 15px;"><i class="fas fa-check-circle"></i> Successfully Signed In!</h4>
+                        <p style="color: #155724; margin-bottom: 15px;">You now have full write access to Google Sheets.</p>
+                        <button class="btn btn-success" onclick="document.getElementById('googleSheetsModal').style.display='none'">
+                            Continue to App
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div id="overlay" class="overlay"></div>
+
+    <script type="module" src="src/app.js"></script>
+</body>
+</html>
