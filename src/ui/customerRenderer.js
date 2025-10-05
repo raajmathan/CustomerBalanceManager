@@ -8,6 +8,11 @@ export class CustomerRenderer {
         const canDelete = customer.balance === 0;
         const hasIndividualSheet = customer.sheetId ? '📊' : '📋';
         
+        // Check if product category filters are active and show sales count
+        const productCategoryFilters = window.customerManager?.advancedFilters?.productCategories || [];
+        const salesCount = productCategoryFilters.length > 0 ? 
+            window.customerManager.getProductCategorySalesCount(customer, productCategoryFilters) : 0;
+        
         return `
             <div class="customer-card fade-in">
                 <div class="customer-header">
@@ -16,6 +21,14 @@ export class CustomerRenderer {
                         <div class="customer-contact">
                             ${customer.phone ? `📞 ${FormatUtils.escapeHtml(customer.phone)}` : ''}
                         </div>
+                        <div class="customer-category">
+                            🏷️ ${FormatUtils.escapeHtml(customer.category || 'Not specified')}
+                        </div>
+                        ${productCategoryFilters.length > 0 ? `
+                            <div class="sales-count" style="color: #38a169; font-size: 14px; font-weight: 600; margin-top: 5px;">
+                                📈 ${salesCount} transaction${salesCount !== 1 ? 's' : ''} in selected categories
+                            </div>
+                        ` : ''}
                     </div>
                     <div class="balance-display ${balanceClass}">
                         ${FormatUtils.formatCurrency(customer.balance)}
@@ -56,6 +69,7 @@ export class CustomerRenderer {
                     <tr>
                         <th>Name</th>
                         <th>Contact</th>
+                        <th>Category</th>
                         <th>Balance</th>
                         <th>Last Updated</th>
                         <th>Actions</th>
@@ -73,14 +87,23 @@ export class CustomerRenderer {
         const canDelete = customer.balance === 0;
         const hasIndividualSheet = customer.sheetId ? '📊' : '📋';
         
+        // Check if product category filters are active and show sales count
+        const productCategoryFilters = window.customerManager?.advancedFilters?.productCategories || [];
+        const salesCount = productCategoryFilters.length > 0 ? 
+            window.customerManager.getProductCategorySalesCount(customer, productCategoryFilters) : 0;
+        
         return `
             <tr>
                 <td>
                     <strong>${FormatUtils.escapeHtml(customer.name)} ${hasIndividualSheet}</strong>
                     ${customer.notes ? `<br><small style="color: #718096;">${FormatUtils.escapeHtml(customer.notes.split('\n').slice(-1)[0])}</small>` : ''}
+                    ${productCategoryFilters.length > 0 ? `<br><small style="color: #38a169; font-weight: 600;">📈 ${salesCount} transaction${salesCount !== 1 ? 's' : ''} in selected categories</small>` : ''}
                 </td>
                 <td>
                     ${customer.phone ? `📞 ${FormatUtils.escapeHtml(customer.phone)}` : 'No phone'}
+                </td>
+                <td>
+                    🏷️ ${FormatUtils.escapeHtml(customer.category || 'Not specified')}
                 </td>
                 <td>
                     <span class="${FormatUtils.getBalanceClass(customer.balance)}" style="font-weight: 600;">

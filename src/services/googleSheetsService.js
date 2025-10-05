@@ -100,7 +100,7 @@ export class GoogleSheetsService {
             // Add header values
             await gapi.client.sheets.spreadsheets.values.update({
                 spreadsheetId: this.spreadsheetId,
-                range: `${this.sheetName}!A1:F1`,
+                range: `${this.sheetName}!A1:G1`,
                 valueInputOption: 'RAW',
                 resource: {
                     values: [CONFIG.SHEETS.MASTER_HEADERS]
@@ -108,7 +108,7 @@ export class GoogleSheetsService {
             });
 
             // Format headers as bold
-            await this.formatHeaders(this.spreadsheetId, 0, 6);
+            await this.formatHeaders(this.spreadsheetId, 0, 7);
             
             console.log('Sheet header created successfully with bold formatting');
         } catch (error) {
@@ -156,42 +156,126 @@ export class GoogleSheetsService {
 
     // Sync with Google Sheets
     async syncWithGoogleSheets() {
-        if (!this.isSignedIn || !this.spreadsheetId) return null;
+        if (!this.spreadsheetId) return null;
         
         try {
+            console.log('🔄 Starting Google Sheets sync...');
+            console.log('📊 Spreadsheet ID:', this.spreadsheetId);
+            console.log('🔐 Is signed in:', this.isSignedIn);
+            
             // Get spreadsheet info
+            console.log('📋 Getting spreadsheet info...');
             const spreadsheetInfo = await gapi.client.sheets.spreadsheets.get({
                 spreadsheetId: this.spreadsheetId
             });
             
             const sheets = spreadsheetInfo.result.sheets;
             const sheetNames = sheets.map(sheet => sheet.properties.title);
+            console.log('📄 Available sheets:', sheetNames);
             
             // Use first sheet if target sheet doesn't exist
             let targetSheetName = this.sheetName;
             if (!sheetNames.includes(targetSheetName)) {
                 targetSheetName = sheetNames[0];
                 this.sheetName = targetSheetName;
+                console.log('📝 Using sheet:', targetSheetName);
             }
             
             // Read existing data
+            console.log('📖 Reading data from sheet:', targetSheetName);
             const response = await gapi.client.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadsheetId,
-                range: `${targetSheetName}!A:F`
+                range: `${targetSheetName}!A:G`
             });
             
             if (response.result.values && response.result.values.length > 1) {
                 const rows = response.result.values.slice(1);
-                return rows.map((row, index) => ({
-                    id: Date.now() + index,
-                    name: row[0] || '',
-                    phone: row[1] || '',
-                    balance: parseFloat(row[2]) || 0,
-                    notes: row[3] || '',
-                    lastUpdated: row[4] || DateUtils.getISTDateTime(),
-                    sheetId: row[5] && row[5].includes('spreadsheets/d/') ? 
-                        row[5].split('/d/')[1].split('/')[0] : null
-                }));
+                console.log('Raw sheet data:', rows);
+                
+                return rows.map((row, index) => {
+                    console.log(`=== PARSING ROW ${index} ===`);
+                    console.log('Raw row data:', row);
+                    console.log('Row length:', row.length);
+                    console.log('Individual columns:');
+                    row.forEach((col, colIndex) => {
+                        console.log(`  Column ${colIndex}: "${col}" (type: ${typeof col})`);
+                    });
+                    
+                    // Handle the case where data might be in wrong columns
+                    let name = row[0] || '';
+                    let phone = row[1] || '';
+                    let category = '';
+                    let balance = 0;
+                    let notes = '';
+                    let lastUpdated = row[5] || DateUtils.getISTDateTime();
+                    let sheetId = null;
+                    
+                    // Based on your test data, the structure appears to be:
+                    // [Name, Phone, Category, Balance, Notes, LastUpdated, SheetURL]
+                    // But your actual data shows: [Name, Phone, Balance, Notes, LastUpdated, SheetURL]
+                    
+                    if (row.length >= 3) {
+                        // First, let's try the standard expected format
+                        if (row.length >= 4) {
+                            // Check if column 3 (index 3) looks like a balance
+                            const col3Str = String(row[3]).trim();
+                            console.log(`Checking column 3 as balance: "${col3Str}"`);
+                            
+                            if (!isNaN(col3Str) && col3Str !== '' && !col3Str.includes(':')) {
+                                // Standard format: [Name, Phone, Category, Balance, Notes, LastUpdated, SheetURL]
+                                category = row[2] || '';
+                                balance = parseFloat(col3Str);
+                                notes = row[4] || '';
+                                lastUpdated = row[5] || DateUtils.getISTDateTime();
+                                console.log(`✅ Standard format: category="${category}", balance=${balance}, notes="${notes}"`);
+                            } else {
+                                // Your format: [Name, Phone, Balance, Notes, LastUpdated, SheetURL]
+                                const col2Str = String(row[2]).trim();
+                                console.log(`Checking column 2 as balance: "${col2Str}"`);
+                                
+                                if (!isNaN(col2Str) && col2Str !== '') {
+                                    balance = parseFloat(col2Str);
+                                    notes = row[3] || '';
+                                    lastUpdated = row[4] || DateUtils.getISTDateTime();
+                                    category = 'Contractor'; // Default category since it's missing
+                                    console.log(`✅ Your format: balance=${balance}, notes="${notes}"`);
+                                }
+                            }
+                        } else {
+                            // Fallback for shorter rows
+                            const col2Str = String(row[2]).trim();
+                            if (!isNaN(col2Str) && col2Str !== '') {
+                                balance = parseFloat(col2Str);
+                                category = 'Contractor'; // Default
+                            }
+                        }
+                    }
+                    
+                    // Extract sheet ID from URL if present
+                    if (row[6] && row[6].includes('spreadsheets/d/')) {
+                        sheetId = row[6].split('/d/')[1].split('/')[0];
+                        console.log(`✅ Extracted sheet ID: ${sheetId}`);
+                    } else if (row[5] && row[5].includes('spreadsheets/d/')) {
+                        // Try column 5 if column 6 doesn't have it
+                        sheetId = row[5].split('/d/')[1].split('/')[0];
+                        console.log(`✅ Extracted sheet ID from column 5: ${sheetId}`);
+                    }
+                    
+                    const customer = {
+                        id: Date.now() + index + Math.random() * 1000, // Ensure unique IDs
+                        name,
+                        phone,
+                        category,
+                        balance,
+                        notes,
+                        lastUpdated,
+                        sheetId
+                    };
+                    
+                    console.log(`✅ FINAL PARSED CUSTOMER ${index}:`, customer);
+                    console.log('================================');
+                    return customer;
+                });
             }
             
             return [];
@@ -211,6 +295,7 @@ export class GoogleSheetsService {
                 ...customers.map(customer => [
                     customer.name,
                     customer.phone,
+                    customer.category || '',
                     customer.balance,
                     customer.notes,
                     customer.lastUpdated,
@@ -231,7 +316,7 @@ export class GoogleSheetsService {
             });
 
             // Format headers as bold
-            await this.formatHeaders(this.spreadsheetId, 0, 6);
+            await this.formatHeaders(this.spreadsheetId, 0, 7);
             
         } catch (error) {
             console.error('Upload failed:', error);
@@ -255,6 +340,7 @@ export class GoogleSheetsService {
                 ...customers.map(customer => [
                     customer.name,
                     customer.phone,
+                    customer.category || '',
                     customer.balance,
                     customer.notes,
                     customer.lastUpdated,
@@ -270,7 +356,7 @@ export class GoogleSheetsService {
             });
 
             // Format headers as bold
-            await this.formatHeaders(this.spreadsheetId, 0, 6);
+            await this.formatHeaders(this.spreadsheetId, 0, 7);
             
             console.log('Master sheet updated successfully - one record per customer with bold headers');
         } catch (error) {

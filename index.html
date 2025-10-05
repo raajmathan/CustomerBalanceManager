@@ -12,6 +12,7 @@
         <header class="header">
             <h1><i class="fas fa-wallet"></i> Customer Balance Manager</h1>
             <div class="header-actions">
+                <span id="welcomeMessage" style="color: #718096; margin-right: 15px; font-size: 14px;"></span>
                 <button class="btn btn-primary" id="addCustomerBtn">
                     <i class="fas fa-plus"></i> Add Customer
                 </button>
@@ -21,6 +22,9 @@
                 <button class="btn btn-secondary" id="refreshBtn">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
+                <button class="btn btn-secondary" id="logoutBtn" style="background: #fed7d7; color: #c53030;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
             </div>
         </header>
 
@@ -29,13 +33,244 @@
                 <i class="fas fa-search search-icon"></i>
                 <input type="text" id="searchInput" placeholder="Search customers..." class="search-input">
             </div>
+            
+            <!-- Simple Filter Dropdown -->
             <div class="filter-container">
-                <select id="filterSelect" class="filter-select">
+                <select id="quickFilterSelect" class="filter-select">
                     <option value="all">All Customers</option>
-                    <option value="positive">Positive Balance</option>
-                    <option value="negative">Negative Balance</option>
-                    <option value="zero">Zero Balance</option>
+                    <option value="positive">Receivable Balance</option>
+                    <option value="negative">Payable Balance</option>
+                    <option value="recent">Recently Updated</option>
                 </select>
+            </div>
+            
+            <!-- Advanced Filter Button -->
+            <div class="advanced-filter-toggle">
+                <button class="btn btn-secondary" id="advancedFilterBtn">
+                    <i class="fas fa-filter"></i>
+                    Advanced
+                    <span class="active-filters-badge" id="activeFiltersBadge" style="display: none;">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Stats Row -->
+        <div class="filter-stats-section" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 15px; padding: 15px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);">
+            <div class="filter-stats">
+                <div class="stat-item">
+                    <span class="stat-label">All:</span>
+                    <span class="stat-value" id="allCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Receivable:</span>
+                    <span class="stat-value positive" id="positiveCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Payable:</span>
+                    <span class="stat-value negative" id="negativeCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Recent:</span>
+                    <span class="stat-value" id="recentCount">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Filters Display -->
+        <div class="active-filters-display" id="activeFiltersDisplay" style="display: none; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 15px; padding: 15px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);">
+            <div class="active-filters-content">
+                <div class="active-filters-label">Active Filters:</div>
+                <div class="active-filters-tags" id="activeFiltersTags"></div>
+                <button class="clear-all-active-btn" id="clearAllActiveBtn">
+                    <i class="fas fa-times"></i> Clear All
+                </button>
+            </div>
+        </div>
+
+        <!-- Advanced Filter Panel -->
+        <div class="advanced-filter-panel" id="advancedFilterPanel">
+            <div class="filter-panel-modal">
+                <div class="filter-panel-header">
+                    <h3><i class="fas fa-sliders-h"></i> Advanced Filters</h3>
+                    <div class="filter-panel-actions">
+                        <button class="btn-link" id="clearAllFiltersBtn">Clear All</button>
+                        <button class="close-panel-btn" id="closeFilterPanelBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-panel-content">
+                    <!-- Balance Range Filter -->
+                    <div class="filter-group">
+                        <label class="filter-group-label">
+                            <i class="fas fa-rupee-sign"></i>
+                            Balance Range
+                        </label>
+                        <div class="range-inputs">
+                            <input type="number" id="minBalance" placeholder="Min Amount" class="range-input">
+                            <span class="range-separator">to</span>
+                            <input type="number" id="maxBalance" placeholder="Max Amount" class="range-input">
+                        </div>
+                    </div>
+
+                    <!-- Customer Categories -->
+                    <div class="filter-group">
+                        <label class="filter-group-label">
+                            <i class="fas fa-tags"></i>
+                            Customer Categories
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Contractor" data-filter="category">
+                                <span class="checkbox-custom"></span>
+                                <span>Contractors</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Engineer" data-filter="category">
+                                <span class="checkbox-custom"></span>
+                                <span>Engineers</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Other Party" data-filter="category">
+                                <span class="checkbox-custom"></span>
+                                <span>Other Party</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Last Activity Filter -->
+                    <div class="filter-group">
+                        <label class="filter-group-label">
+                            <i class="fas fa-calendar-alt"></i>
+                            Last Activity
+                        </label>
+                        <select id="activityFilter" class="filter-select">
+                            <option value="">Any time</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="quarter">Last 3 Months</option>
+                            <option value="custom">Custom Date Range</option>
+                        </select>
+                        <div class="date-range-inputs" id="dateRangeInputs" style="display: none;">
+                            <input type="date" id="startDate" class="date-input">
+                            <span class="range-separator">to</span>
+                            <input type="date" id="endDate" class="date-input">
+                        </div>
+                    </div>
+
+                    <!-- Product Category Engagement -->
+                    <div class="filter-group">
+                        <label class="filter-group-label">
+                            <i class="fas fa-shopping-cart"></i>
+                            Product Category Engagement
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Steel" data-filter="product-category">
+                                <span class="checkbox-custom"></span>
+                                <span>Steel Products</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Cement" data-filter="product-category">
+                                <span class="checkbox-custom"></span>
+                                <span>Cement</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Plumbing" data-filter="product-category">
+                                <span class="checkbox-custom"></span>
+                                <span>Plumbing</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Electrical" data-filter="product-category">
+                                <span class="checkbox-custom"></span>
+                                <span>Electrical</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Sanitaryware" data-filter="product-category">
+                                <span class="checkbox-custom"></span>
+                                <span>Sanitaryware</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Emulsion & Paint" data-filter="product-category">
+                                <span class="checkbox-custom"></span>
+                                <span>Emulsion & Paint</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Powder Coatings" data-filter="product-category">
+                                <span class="checkbox-custom"></span>
+                                <span>Powder Coatings</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Carpentry" data-filter="product-category">
+                                <span class="checkbox-custom"></span>
+                                <span>Carpentry</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Metal Products" data-filter="product-category">
+                                <span class="checkbox-custom"></span>
+                                <span>Metal Products</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="Others" data-filter="product-category">
+                                <span class="checkbox-custom"></span>
+                                <span>Others</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Balance Status -->
+                    <div class="filter-group">
+                        <label class="filter-group-label">
+                            <i class="fas fa-chart-line"></i>
+                            Balance Status
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="high-receivable" data-filter="balance-status">
+                                <span class="checkbox-custom"></span>
+                                <span>High Receivable (>₹10,000)</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="high-payable" data-filter="balance-status">
+                                <span class="checkbox-custom"></span>
+                                <span>High Payable (>₹10,000)</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="settled" data-filter="balance-status">
+                                <span class="checkbox-custom"></span>
+                                <span>Settled (₹0)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Sort Options -->
+                    <div class="filter-group">
+                        <label class="filter-group-label">
+                            <i class="fas fa-sort"></i>
+                            Sort By
+                        </label>
+                        <select id="sortFilter" class="filter-select">
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                            <option value="balance-desc">Balance (High to Low)</option>
+                            <option value="balance-asc">Balance (Low to High)</option>
+                            <option value="updated-desc">Recently Updated</option>
+                            <option value="updated-asc">Oldest Updated</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-panel-footer">
+                    <div class="results-preview">
+                        <span id="filterResultsCount">0 customers match your filters</span>
+                    </div>
+                    <div class="filter-panel-buttons">
+                        <button class="btn btn-secondary" id="resetFiltersBtn">Reset</button>
+                        <button class="btn btn-primary" id="applyAdvancedFiltersBtn">Apply Filters</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -123,6 +358,15 @@
                            title="Phone number must be 10-15 digits and can include spaces, hyphens, plus signs, and parentheses (optional)">
                 </div>
                 <div class="form-group">
+                    <label for="customerCategory">Customer Category *</label>
+                    <select id="customerCategory" name="customerCategory" required>
+                        <option value="">Select Category</option>
+                        <option value="Contractor">Contractor</option>
+                        <option value="Engineer">Engineer</option>
+                        <option value="Other Party">Other Party</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label for="customerBalance">Initial Balance</label>
                     <input type="number" id="customerBalance" name="customerBalance" 
                            step="0.01" value="0" min="-1000000" max="1000000"
@@ -158,11 +402,43 @@
                 <div class="form-group">
                     <label for="transactionType">Transaction Type</label>
                     <select id="transactionType" name="transactionType" required>
-                        <option value="add">Add Money (New Purchase/Service)</option>
-                        <option value="subtract">Subtract Money (Payment Received)</option>
+                        <option value="subtract">Customer Payment (Reduces Balance)</option>
+                        <option value="add">New Sale (Increases Balance)</option>
                         <option value="return">Return Product (Refund to Customer)</option>
                     </select>
                 </div>
+
+                <div class="form-group" id="paymentMethodGroup" style="display: none;">
+                    <label for="paymentMethod">Payment Method:</label>
+                    <select id="paymentMethod" name="paymentMethod">
+                        <option value="">Select Payment Method</option>
+                        <option value="Cash">Cash</option>
+                        <option value="GPay">GPay</option>
+                        <option value="PhonePe">PhonePe</option>
+                        <option value="NEFT">NEFT</option>
+                        <option value="QR Code">QR Code</option>
+                        <option value="Cheque">Cheque</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="productCategoryGroup" style="display: none;">
+                    <label for="productCategory">Product Category:</label>
+                    <select id="productCategory" name="productCategory">
+                        <option value="">Select Category</option>
+                        <option value="Steel">Steel</option>
+                        <option value="Cement">Cement</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Sanitaryware">Sanitaryware</option>
+                        <option value="Emulsion & Paint">Emulsion & Paint</option>
+                        <option value="Powder Coatings">Powder Coatings</option>
+                        <option value="Carpentry">Carpentry</option>
+                        <option value="Metal Products">Metal Products</option>
+                        <option value="Others">Others</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label for="transactionAmount">Amount *</label>
                     <input type="number" id="transactionAmount" name="transactionAmount" 
@@ -170,10 +446,10 @@
                            title="Amount must be between ₹0.01 and ₹10,00,000">
                 </div>
                 <div class="form-group">
-                    <label for="transactionNote">Transaction Note</label>
-                    <input type="text" id="transactionNote" name="transactionNote" 
-                           maxlength="200" placeholder="e.g., Payment for invoice #123"
-                           title="Transaction note must not exceed 200 characters">
+                    <label for="transactionDescription">Transaction Description</label>
+                    <textarea id="transactionDescription" name="transactionDescription" 
+                           rows="3" maxlength="200" placeholder="Enter transaction details..."
+                           title="Transaction description must not exceed 200 characters"></textarea>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancelBalanceBtn">Cancel</button>
@@ -269,7 +545,49 @@
 
     <!-- Overlay -->
     <div id="overlay" class="overlay"></div>
+    
+    <!-- Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
+    <script>
+        // Check if user is logged in before loading the application
+        if (sessionStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+
+        // Google Sheets OAuth Setup Function
+        function setupGoogleSheets() {
+            const clientId = document.getElementById('clientId').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const spreadsheetId = document.getElementById('spreadsheetId').value.trim();
+            
+            if (!clientId || !apiKey || !spreadsheetId) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            // Update the configuration
+            window.CONFIG = window.CONFIG || {};
+            window.CONFIG.OAUTH = {
+                CLIENT_ID: clientId,
+                API_KEY: apiKey,
+                SPREADSHEET_ID: spreadsheetId,
+                DISCOVERY_DOC: 'https://sheets.googleapis.com/$discovery/rest?version=v4',
+                SCOPES: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive'
+            };
+            
+            // Save to localStorage for persistence
+            localStorage.setItem('googleSheetsOAuthConfig', JSON.stringify({
+                clientId: clientId,
+                apiKey: apiKey,
+                spreadsheetId: spreadsheetId
+            }));
+            
+            // Reload the page to apply new configuration
+            alert('Configuration saved! The page will reload to apply the new settings.');
+            window.location.reload();
+        }
+    </script>
     <script type="module" src="src/app.js"></script>
 </body>
 </html>
